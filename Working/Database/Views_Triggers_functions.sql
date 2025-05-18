@@ -1,56 +1,72 @@
 --  1. VIEWS
 
--- A. Recently added 10 games
-DROP VIEW IF EXISTS Recent_Games;
-CREATE VIEW Recent_Games AS
-SELECT * FROM BOARD_GAMES
+-- User info
+CREATE OR REPLACE VIEW user_info AS
+SELECT user_id, username, is_admin
+FROM Users;
+
+-- Recently updated/added 10 games
+CREATE OR REPLACE VIEW Recent_Games AS
+SELECT game_id, name, image
+FROM BOARD_GAMES
 ORDER BY updated_at DESC
 LIMIT 10;
 
--- B. List of users for admin
+-- Upcoming Events with Venue Info
+CREATE OR REPLACE VIEW Upcoming_Events AS
+SELECT E.event_id, E.name AS event_name, E.description, E.event_time,
+       V.name AS venue_name, E.max_participants
+FROM EVENTS E
+JOIN VENUE V ON E.venue_id = V.venue_id
+WHERE E.event_time >= NOW()
+ORDER BY E.event_time;
+
+-- Game Details
+CREATE OR REPLACE VIEW Game_Details AS
+SELECT BG.game_id, BG.name, BG.description, BG.year_published,
+       BG.min_players, BG.max_players, BG.min_playtime, BG.max_playtime,
+       BG.min_age, BG.publisher, BG.average_rating
+FROM BOARD_GAMES BG;
+
+-- Game Genres
+CREATE OR REPLACE VIEW Game_Genres AS
+SELECT IG.game_id, G.name AS genre
+FROM IsOfGenre IG
+JOIN GENRES G ON IG.genre_id = G.genre_id;
+
+-- Ratings with Usernames
+CREATE OR REPLACE VIEW Game_Ratings AS
+SELECT R.game_id, U.username, R.Stars, R.comment
+FROM Rating R
+JOIN Users U ON R.user_id = U.user_id;
+
+-- Searchable Game Data View
+CREATE OR REPLACE VIEW Game_SearchView AS
+SELECT BG.game_id, BG.name, BG.year_published, BG.publisher,
+       BG.min_age, BG.average_rating, BG.image, G.name AS genre
+FROM BOARD_GAMES BG
+LEFT JOIN IsOfGenre IG ON BG.game_id = IG.game_id
+LEFT JOIN GENRES G ON IG.genre_id = G.genre_id;
+
+-- List of users for admin
 DROP VIEW IF EXISTS Admin_UserList;
 CREATE VIEW Admin_UserList AS
 SELECT user_id, username, is_admin, is_blocked
 FROM Users;
 
--- C. List of games for admin to manage
+-- List of games for admin to manage
 DROP VIEW IF EXISTS Admin_BoardGames;
 CREATE VIEW Admin_BoardGames AS
 SELECT game_id, name, year_published, min_players, max_players, average_rating
 FROM BOARD_GAMES;
 
--- D. List of games owned and number of owners
+-- List of games owned and number of owners
 DROP VIEW IF EXISTS Games_Owned_Count;
 CREATE VIEW Games_Owned_Count AS
 SELECT bg.name, COUNT(go.user_id) AS owners_count
 FROM BOARD_GAMES bg
 JOIN GameOwned go ON bg.game_id = go.game_id
 GROUP BY bg.game_id;
-
--- E. Events and number of participants
-DROP VIEW IF EXISTS Event_Participation;
-CREATE VIEW Event_Participation AS
-SELECT e.name, e.event_time, COUNT(p.user_id) AS participants
-FROM EVENTS e
-LEFT JOIN ParticipateTo p ON e.event_id = p.event_id
-GROUP BY e.event_id;
-
--- F. Games and their genres
-DROP VIEW IF EXISTS Game_Genres;
-CREATE VIEW Game_Genres AS
-SELECT bg.name AS game, g.name AS genre
-FROM BOARD_GAMES bg
-JOIN IsOfGenre ig ON bg.game_id = ig.game_id
-JOIN GENRES g ON ig.genre_id = g.genre_id;
-
--- G. Genres and number of games in each
-DROP VIEW IF EXISTS Genre_Game_Count;
-CREATE VIEW Genre_Game_Count AS
-SELECT g.name AS genre, COUNT(ig.game_id) AS total_games
-FROM GENRES g
-LEFT JOIN IsOfGenre ig ON g.genre_id = ig.genre_id
-GROUP BY g.genre_id;
-
 
 -- 2. INDEXES (to optimize performance)
 
@@ -62,7 +78,7 @@ CREATE INDEX idx_event_time ON EVENTS(event_time);
 
 -- 3. TRIGGERS
 
--- A. Update average_rating when new rating added
+-- Update average_rating when new rating added
 DROP TRIGGER IF EXISTS update_rating_avg;
 
 CREATE TRIGGER update_rating_avg AFTER INSERT ON Rating
@@ -79,7 +95,7 @@ END;
 
 
 
--- B. Update nb_participant when someone joins event
+-- Update nb_participant when someone joins event
 DROP TRIGGER IF EXISTS update_nb_participant;
 
 
@@ -93,7 +109,7 @@ END;
 
 
 
--- C. Update updated_at on game modification
+-- Update updated_at on game modification
 DROP TRIGGER IF EXISTS set_updated_at;
 
 
@@ -105,7 +121,7 @@ END;
 
 
 
--- D. Check max participants before adding to event
+-- Check max participants before adding to event
 DROP TRIGGER IF EXISTS check_max_participants;
 
 
@@ -123,7 +139,7 @@ BEGIN
 END;
 
 
--- E. Check venue capacity not exceeded by event
+-- Check venue capacity not exceeded by event
 DROP TRIGGER IF EXISTS check_venue_capacity;
 
 
@@ -143,7 +159,19 @@ END;
 
 -- 4. STORED PROCEDURES & FUNCTIONS
 
--- A. Search for a game (by filters)
+-- Get User Role
+DROP PROCEDURE IF EXISTS GetUserRole;
+
+CREATE FUNCTION GetUserRole(uid INT) RETURNS VARCHAR(10)
+DETERMINISTIC
+BEGIN
+  DECLARE role VARCHAR(10);
+  SELECT IF(is_admin, 'admin', 'user') INTO role
+  FROM Users WHERE user_id = uid;
+  RETURN role;
+END;
+
+-- Search for a game (by filters)
 DROP PROCEDURE IF EXISTS SearchGame;
 
 CREATE PROCEDURE SearchGame(
@@ -167,7 +195,7 @@ END;
 
 
 
--- B. Games in a user’s wishlist
+-- Games in a user’s wishlist
 DROP FUNCTION IF EXISTS GetWishlist;
 
 CREATE FUNCTION GetWishlist(userID INT)
@@ -185,7 +213,7 @@ END;
 
 
 
--- C. Users for a given event
+-- Users for a given event
 DROP PROCEDURE IF EXISTS GetEventUsers;
 
 CREATE PROCEDURE GetEventUsers(IN eventID INT)
@@ -198,7 +226,7 @@ END;
 
 
 
--- D. Ratings for a game
+-- Ratings for a game
 DROP PROCEDURE IF EXISTS GetRatingsForGame;
 
 CREATE PROCEDURE GetRatingsForGame(IN gameID INT)
@@ -211,7 +239,7 @@ END;
 
 
 
--- E. Blocked/unblocked users
+-- Blocked/unblocked users
 DROP PROCEDURE IF EXISTS GetUsersByBlockStatus;
 
 CREATE PROCEDURE GetUsersByBlockStatus(IN blockStatus BOOLEAN)
@@ -221,7 +249,7 @@ END;
 
 
 
--- F. Modify event info
+-- Modify event info
 DROP PROCEDURE IF EXISTS UpdateEvent;
 
 CREATE PROCEDURE UpdateEvent(
@@ -239,7 +267,7 @@ BEGIN
 END;
 
 
--- G. Games owned by a user
+-- Games owned by a user
 DROP PROCEDURE IF EXISTS GetOwnedGames;
 
 CREATE PROCEDURE GetOwnedGames(IN userID INT)
