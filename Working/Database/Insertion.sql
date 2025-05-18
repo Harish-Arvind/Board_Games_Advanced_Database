@@ -608,9 +608,9 @@ INSERT INTO VENUE (address, name, max_capacity) VALUES
 
 -- Insert into events
 INSERT INTO EVENTS (name, description, max_participants, nb_participant, event_time, venue_id) VALUES
-('Spring Meeple Fest', 'Celebrate spring with friendly meeple matches and floral-themed games.', 60, 0, '2025-05-10 14:00:00', 1),
-('Bastille Day Board Bash', 'Play revolutionary-era board games during France\'s national day.', 80, 0, '2025-07-14 16:00:00', 2),
-('Summer Dice Carnival', 'Outdoor board game event with food and music.', 70, 0, '2025-08-20 12:00:00', 3),
+('Spring Meeple Fest', 'Celebrate spring with friendly meeple matches and floral-themed games.', 90, 0, '2025-05-10 14:00:00', 1),
+('Bastille Day Board Bash', 'Play revolutionary-era board games during France\'s national day.', 70, 0, '2025-07-14 16:00:00', 2),
+('Summer Dice Carnival', 'Outdoor board game event with food and music.', 60, 0, '2025-08-20 12:00:00', 3),
 ('Halloween Horror Game Night', 'Spooky board games and costume contest.', 50, 0, '2025-10-31 19:00:00', 4),
 ('Noël Ludique', 'Christmas-themed board game fair with hot chocolate and games.', 70, 0, '2025-12-20 15:00:00', 5),
 ('New Year Game Countdown', 'Ring in the new year with a night-long gaming marathon.', 90, 0, '2025-12-31 20:00:00', 6),

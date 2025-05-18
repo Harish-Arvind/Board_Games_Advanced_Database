@@ -206,14 +206,69 @@ def enroll_event(event_id):
     return redirect(url_for('event_detail', event_id=event_id))
 
 
-@app.route('/search')
-def search():
-    query = request.args.get('q', '')
+@app.route('/search_games')
+def search_games():
+    page = request.args.get('page', 1, type=int)
+    per_page = 30
+    offset = (page - 1) * per_page
+
+    # Collect filter parameters
+    name = request.args.get('name')
+    year = request.args.get('year')
+    publisher = request.args.get('publisher')
+    min_age = request.args.get('min_age')
+    rating = request.args.get('rating')
+    genre = request.args.get('genre')
+
+    base_query = """
+        FROM BOARD_GAMES BG
+        LEFT JOIN IsOfGenre IG ON BG.game_id = IG.game_id
+        LEFT JOIN GENRES G ON IG.genre_id = G.genre_id
+        WHERE 1=1
+    """
+    filters = []
+    values = []
+
+    if name:
+        filters.append(" AND BG.name LIKE %s")
+        values.append(f"%{name}%")
+    if year:
+        filters.append(" AND BG.year_published = %s")
+        values.append(year)
+    if publisher:
+        filters.append(" AND BG.publisher LIKE %s")
+        values.append(f"%{publisher}%")
+    if min_age:
+        filters.append(" AND BG.min_age >= %s")
+        values.append(min_age)
+    if rating:
+        filters.append(" AND BG.average_rating >= %s")
+        values.append(rating)
+    if genre:
+        filters.append(" AND G.name = %s")
+        values.append(genre)
+
+    filter_sql = ''.join(filters)
+
+    # Query with LIMIT
+    query = f"SELECT DISTINCT BG.game_id, BG.name, BG.image {base_query} {filter_sql} LIMIT %s OFFSET %s"
+    paged_values = values + [per_page, offset]
+
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM BOARD_GAMES WHERE name LIKE %s", ('%' + query + '%',))
-    results = cur.fetchall()
+    cur.execute(query, paged_values)
+    games = cur.fetchall()
+
+    # Count total results for pagination
+    count_query = f"SELECT COUNT(DISTINCT BG.game_id) {base_query} {filter_sql}"
+    cur.execute(count_query, values)
+    total_games = cur.fetchone()[0]
     cur.close()
-    return render_template('search_results.html', query=query, results=results)
+
+    total_pages = (total_games + per_page - 1) // per_page
+
+    return render_template("search_games.html", games=games, page=page, total_pages=total_pages)
+
+
 
 
 @app.route('/register', methods=['GET', 'POST'])

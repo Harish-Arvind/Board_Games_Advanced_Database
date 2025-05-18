@@ -14,3 +14,18 @@ nav a {
 ul.flashes {
   color: red;
 }
+
+.game-card img {
+    transition: transform 0.2s;
+  }
+
+  .game-card:hover img {
+    transform: scale(1.05);
+  }
+
+  .game-card {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 10px;
+    background-color: #fafafa;
+  }

@@ -1,9 +1,5 @@
 {% extends 'base.html' %}
 {% block content %}
-  <form method="GET" action="/search">
-  <input type="text" name="q" placeholder="Search for a game...">
-  <input type="submit" value="Search">
-  </form>
 
   <h2>Recently Updated Games</h2>
   <div style="display: flex; flex-wrap: wrap; gap: 20px;">
@@ -35,27 +31,9 @@
         {{ description }}<br>
         📅 {{ event_time.strftime('%d-%m-%Y') }} at 🕒 {{ event_time.strftime('%H:%M') }}
         📍 Venue: {{ venue_name }}<br>
-        👥 Max Participants: {{ max_participants }}
       </li>
     {% endfor %}
   </ul>
-
-  <style>
-  .game-card img {
-    transition: transform 0.2s;
-  }
-
-  .game-card:hover img {
-    transform: scale(1.05);
-  }
-
-  .game-card {
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    padding: 10px;
-    border-radius: 10px;
-    background-color: #fafafa;
-  }
-  </style>
 
 {% endblock %}
 
