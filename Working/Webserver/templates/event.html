@@ -1,13 +1,24 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h2>{{ event[0] }}</h2>
+  <h2>🎲 {{ event[0] }}</h2>
   <p>{{ event[1] }}</p>
-  <ul>
-    <li><strong>Date:</strong> {{ event[2].strftime('%Y-%m-%d') }}</li>
-    <li><strong>Time:</strong> {{ event[2].strftime('%H:%M') }}</li>
-    <li><strong>Max Participants:</strong> {{ event[3] }}</li>
-    <li><strong>Registered Participants:</strong> {{ event[4] }}</li>
-    <li><strong>Venue:</strong> {{ event[5] }} - {{ event[6] }}</li>
-    <li><strong>Venue Capacity:</strong> {{ event[7] }}</li>
+
+  <ul style="list-style: none; padding: 0; font-size: 1.1em;">
+    <li>📅 <strong>Date:</strong> {{ event[2].strftime('%d-%m-%Y') }}</li>
+    <li>🕒 <strong>Time:</strong> {{ event[2].strftime('%H:%M') }}</li>
+    <li>👥 <strong>Max Participants:</strong> {{ event[3] }}</li>
+    <li>✅ <strong>Registered Participants:</strong> {{ event[4] }}</li>
+    <li>📍 <strong>Venue:</strong> {{ event[5] }} – {{ event[6] }}</li>
   </ul>
+  {% if current_user.is_authenticated %}
+    {% if is_enrolled %}
+      <p><em>You are already enrolled in this event.</em></p>
+    {% else %}
+      <form action="{{ url_for('enroll_event', event_id=event_id) }}" method="post">
+        <button type="submit">Enroll in Event</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <p><a href="{{ url_for('login') }}">Log in</a> to enroll in this event.</p>
+  {% endif %}
 {% endblock %}

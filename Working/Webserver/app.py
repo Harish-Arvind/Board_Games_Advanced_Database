@@ -64,7 +64,17 @@ class AddGameForm(FlaskForm):
 def home():
     cur = mysql.connection.cursor()
     cur.execute("SELECT game_id, name, image FROM BOARD_GAMES ORDER BY updated_at DESC LIMIT 10")
-    recent_games = cur.fetchall()
+    rows = cur.fetchall()
+    # Format the image field as either a URL or a flag for BLOB image
+    recent_games = []
+    for row in rows:
+        game_id, name, image = row
+        if isinstance(image, str) and image.startswith('http'):
+            image_path = image  # External image URL
+        else:
+            image_path = "blob"  # Will be handled by /game_image/<id>
+        recent_games.append((game_id, name, image_path))
+
     cur.execute("""
         SELECT E.event_id, E.name, E.description, E.event_time, V.name, E.max_participants
         FROM EVENTS E
@@ -92,6 +102,65 @@ def serve_image(game_id):
     if result and result[0]:
         return send_file(BytesIO(result[0]), mimetype='image/jpeg')
     return '', 404
+
+@app.route('/events/<int:event_id>', methods=['GET', 'POST'])
+def event_detail(event_id):
+    cur = mysql.connection.cursor()
+
+    # Get event and venue details
+    cur.execute("""
+        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
+               V.name, V.address, V.max_capacity
+        FROM EVENTS E
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE E.event_id = %s
+    """, (event_id,))
+    event = cur.fetchone()
+
+    if not event:
+        cur.close()
+        return "Event not found", 404
+
+    user_id = current_user.get_id() if current_user.is_authenticated else None
+
+    # Check if the user is already enrolled
+    is_enrolled = False
+    if user_id:
+        cur.execute("""
+            SELECT 1 FROM ParticipateTo WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        is_enrolled = cur.fetchone() is not None
+
+    cur.close()
+    return render_template('event.html', event=event, event_id=event_id, is_enrolled=is_enrolled)
+
+@app.route('/events/<int:event_id>/enroll', methods=['POST'])
+@login_required
+def enroll_event(event_id):
+    user_id = current_user.get_id()
+    cur = mysql.connection.cursor()
+
+    # Check if already enrolled
+    cur.execute("SELECT 1 FROM ParticipateTo WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+    if cur.fetchone():
+        flash("You are already enrolled in this event.")
+        cur.close()
+        return redirect(url_for('event_detail', event_id=event_id))
+
+    # Enroll the user
+    try:
+        cur.execute("INSERT INTO ParticipateTo (event_id, user_id) VALUES (%s, %s)", (event_id, user_id))
+        cur.execute("UPDATE EVENTS SET nb_participant = nb_participant + 1 WHERE event_id = %s", (event_id,))
+        mysql.connection.commit()
+        flash("Successfully enrolled!")
+    except Exception as e:
+        mysql.connection.rollback()
+        flash("Enrollment failed.")
+        print(f"Error: {e}")
+    finally:
+        cur.close()
+
+    return redirect(url_for('event_detail', event_id=event_id))
 
 
 @app.route('/search')
@@ -271,27 +340,6 @@ def rate_game(game_id):
     cur.close()
     flash('Rating submitted.')
     return redirect(url_for('dashboard'))
-
-@app.route('/events/<int:event_id>')
-def event_detail(event_id):
-    cur = mysql.connection.cursor()
-
-    # Get event details
-    cur.execute("""
-        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
-               V.name, V.address, V.max_capacity
-        FROM EVENTS E
-        JOIN VENUE V ON E.venue_id = V.venue_id
-        WHERE E.event_id = %s
-    """, (event_id,))
-    event = cur.fetchone()
-    cur.close()
-
-    if not event:
-        return "Event not found", 404
-
-    return render_template('events.html', event=event)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
