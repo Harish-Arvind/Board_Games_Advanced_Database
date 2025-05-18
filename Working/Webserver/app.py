@@ -205,6 +205,81 @@ def enroll_event(event_id):
 
     return redirect(url_for('event_detail', event_id=event_id))
 
+@app.route('/admin/events/edit/<int:event_id>', methods=['GET', 'POST'])
+@login_required
+def edit_event(event_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        max_participants = request.form['max_participants']
+        event_time = request.form['event_time']
+        venue_id = request.form['venue_id']
+
+        cur.execute("""
+            UPDATE EVENTS
+            SET name=%s, description=%s, max_participants=%s, event_time=%s, venue_id=%s
+            WHERE event_id=%s
+        """, (name, description, max_participants, event_time, venue_id, event_id))
+        mysql.connection.commit()
+        cur.close()
+        flash('Event updated successfully', 'success')
+        return redirect(url_for('admin_events'))
+
+    # GET request: show form
+    cur.execute("SELECT * FROM EVENTS WHERE event_id = %s", (event_id,))
+    event = cur.fetchone()
+    cur.execute("SELECT * FROM VENUE")
+    venues = cur.fetchall()
+    cur.close()
+    return render_template('Admin/edit_event.html', event=event, venues=venues)
+
+
+
+@app.route('/admin/events/<int:event_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_event(event_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        event_time = request.form['event_time']
+        max_participants = request.form['max_participants']
+        venue_id = request.form['venue_id']
+
+        cur.execute("""
+            UPDATE EVENTS
+            SET name=%s, description=%s, event_time=%s, max_participants=%s, venue_id=%s
+            WHERE event_id=%s
+        """, (name, description, event_time, max_participants, venue_id, event_id))
+
+        mysql.connection.commit()
+        cur.close()
+        flash('Event updated successfully.', 'success')
+        return redirect(url_for('admin_events'))
+
+    # GET request: show form with existing data
+    cur.execute("SELECT * FROM EVENTS WHERE event_id = %s", (event_id,))
+    event = cur.fetchone()
+
+    cur.execute("SELECT venue_id, name FROM VENUE")
+    venues = cur.fetchall()
+    cur.close()
+
+    return render_template('Admin/edit_event.html', event=event, venues=venues)
+
+
+
 
 @app.route('/search_games')
 def search_games():
@@ -361,7 +436,7 @@ def login():
 def admin():
     if current_user.role != 'admin':
         return "Unauthorized", 403
-    return render_template('admin.html', user=current_user)
+    return render_template('/Admin/admin.html', user=current_user)
 
 @app.route('/profile')
 @login_required
@@ -407,7 +482,72 @@ def dashboard():
 def admin_panel():
     if current_user.role != 'admin':
         return redirect(url_for('home'))
-    return render_template('admin.html')
+    return render_template('Admin/admin.html')
+
+
+@app.route('/admin/games')
+@login_required
+def admin_games():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM BOARD_GAMES")
+    games = cur.fetchall()
+    cur.close()
+    return render_template('Admin/games.html', games=games)
+
+
+@app.route('/admin/events')
+@login_required
+def admin_events():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT E.*, V.name AS venue_name FROM EVENTS E JOIN VENUE V ON E.venue_id = V.venue_id")
+    events = cur.fetchall()
+    cur.close()
+    return render_template('Admin/events.html', events=events)
+
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT user_id, username, is_blocked FROM Users WHERE is_admin = 0")
+    users = cur.fetchall()
+    cur.close()
+    return render_template('Admin/users.html', users=users)
+
+
+@app.route('/admin/users/<int:user_id>/toggle_block', methods=['POST'])
+@login_required
+def toggle_block_user(user_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT is_blocked FROM Users WHERE user_id = %s", (user_id,))
+    user = cur.fetchone()
+
+    if user:
+        new_status = not user[0]
+        cur.execute("UPDATE Users SET is_blocked = %s WHERE user_id = %s", (new_status, user_id))
+        mysql.connection.commit()
+        flash('User status updated.', 'success')
+    else:
+        flash('User not found.', 'danger')
+
+    cur.close()
+    return redirect(url_for('admin_users'))
 
 @app.route('/add_game', methods=['GET', 'POST'])
 @login_required

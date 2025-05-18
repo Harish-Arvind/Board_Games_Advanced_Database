@@ -1,0 +1,10 @@
+ {% extends 'base.html' %}
+ {% block content %}
+ <h2>Game Management</h2>
+ <table>
+   <tr><th>Name</th><th>Year</th><th>Publisher</th></tr>
+   {% for game in games %}
+     <tr><td>{{ game.name }}</td><td>{{ game.year_published }}</td><td>{{ game.publisher }}</td></tr>
+   {% endfor %}
+ </table>
+ {% endblock %}

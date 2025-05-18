@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Event Management</h2>
+<table>
+  <tr><th>Name</th><th>Description</th><th>Time</th><th>Venue</th><th>Action</th></tr>
+  {% for event in events %}
+    <tr>
+      <td>{{ event[1] }}</td>
+      <td>{{ event[2] }}</td>
+      <td>{{ event[5] }}</td>
+      <td>{{ event[-1] }}</td>  {# venue_name #}
+      <td>
+        <a href="{{ url_for('edit_event', event_id=event[0]) }}">Modify</a>
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}

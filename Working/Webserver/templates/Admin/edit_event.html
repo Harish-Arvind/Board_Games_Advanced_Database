@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Edit Event</h2>
+
+<form method="POST">
+  <label>Name:</label>
+  <input type="text" name="name" value="{{ event[1] }}" required><br>
+
+  <label>Description:</label>
+  <textarea name="description" required>{{ event[2] }}</textarea><br>
+
+  <label>Event Time:</label>
+  <input type="datetime-local" name="event_time" value="{{ event[5]|replace(' ', 'T') }}" required><br>
+
+  <label>Max Participants:</label>
+  <input type="number" name="max_participants" value="{{ event[3] }}" required><br>
+
+  <label>Venue:</label>
+  <select name="venue_id" required>
+    {% for venue in venues %}
+      <option value="{{ venue[0] }}" {% if venue[0] == event[6] %}selected{% endif %}>{{ venue[1] }}</option>
+    {% endfor %}
+  </select><br>
+
+  <button type="submit">Update Event</button>
+</form>
+{% endblock %}

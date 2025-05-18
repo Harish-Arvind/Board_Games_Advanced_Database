@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>User Management</h2>
+<table>
+  <tr><th>Username</th><th>Status</th><th>Action</th></tr>
+  {% for user in users %}
+    <tr>
+      <td>{{ user[1] }}</td>
+      <td>{{ 'Blocked' if user[2] else 'Active' }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('toggle_block_user', user_id=user[0]) }}">
+          <button type="submit">{{ 'Unblock' if user[2] else 'Block' }}</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}
