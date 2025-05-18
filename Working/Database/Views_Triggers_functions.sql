@@ -64,7 +64,6 @@ CREATE INDEX idx_event_time ON EVENTS(event_time);
 
 -- A. Update average_rating when new rating added
 DROP TRIGGER IF EXISTS update_rating_avg;
-DELIMITER //
 
 CREATE TRIGGER update_rating_avg AFTER INSERT ON Rating
 FOR EACH ROW
@@ -77,13 +76,12 @@ BEGIN
   )
   WHERE game_id = NEW.game_id;
 END;
-//
-DELIMITER ;
+
 
 
 -- B. Update nb_participant when someone joins event
 DROP TRIGGER IF EXISTS update_nb_participant;
-DELIMITER //
+
 
 CREATE TRIGGER update_nb_participant AFTER INSERT ON ParticipateTo
 FOR EACH ROW
@@ -92,26 +90,24 @@ BEGIN
   SET nb_participant = nb_participant + 1
   WHERE event_id = NEW.event_id;
 END;
-//
-DELIMITER ;
+
 
 
 -- C. Update updated_at on game modification
 DROP TRIGGER IF EXISTS set_updated_at;
-DELIMITER //
+
 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON BOARD_GAMES
 FOR EACH ROW
 BEGIN
   SET NEW.updated_at = NOW();
 END;
-//
-DELIMITER ;
+
 
 
 -- D. Check max participants before adding to event
 DROP TRIGGER IF EXISTS check_max_participants;
-DELIMITER //
+
 
 CREATE TRIGGER check_max_participants BEFORE INSERT ON ParticipateTo
 FOR EACH ROW
@@ -125,13 +121,11 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Max participants reached for this event';
   END IF;
 END;
-//
-DELIMITER ;
 
 
 -- E. Check venue capacity not exceeded by event
 DROP TRIGGER IF EXISTS check_venue_capacity;
-DELIMITER //
+
 
 CREATE TRIGGER check_venue_capacity BEFORE INSERT ON EVENTS
 FOR EACH ROW
@@ -144,15 +138,14 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Max participants exceeds venue capacity';
   END IF;
 END;
-//
-DELIMITER ;
+
 
 
 -- 4. STORED PROCEDURES & FUNCTIONS
 
 -- A. Search for a game (by filters)
 DROP PROCEDURE IF EXISTS SearchGame;
-DELIMITER //
+
 CREATE PROCEDURE SearchGame(
   IN y YEAR, IN g VARCHAR(50),
   IN minP INT, IN maxP INT,
@@ -171,13 +164,12 @@ BEGIN
     AND bg.max_playtime <= maxT
     AND bg.min_age <= age;
 END;
-//
-DELIMITER ;
+
 
 
 -- B. Games in a user’s wishlist
 DROP FUNCTION IF EXISTS GetWishlist;
-DELIMITER //
+
 CREATE FUNCTION GetWishlist(userID INT)
 RETURNS TEXT
 DETERMINISTIC
@@ -190,13 +182,12 @@ BEGIN
   WHERE wl.user_id = userID;
   RETURN result;
 END;
-//
-DELIMITER ;
+
 
 
 -- C. Users for a given event
 DROP PROCEDURE IF EXISTS GetEventUsers;
-DELIMITER //
+
 CREATE PROCEDURE GetEventUsers(IN eventID INT)
 BEGIN
   SELECT u.username
@@ -204,13 +195,12 @@ BEGIN
   JOIN ParticipateTo pt ON pt.user_id = u.user_id
   WHERE pt.event_id = eventID;
 END;
-//
-DELIMITER ;
+
 
 
 -- D. Ratings for a game
 DROP PROCEDURE IF EXISTS GetRatingsForGame;
-DELIMITER //
+
 CREATE PROCEDURE GetRatingsForGame(IN gameID INT)
 BEGIN
   SELECT u.username, r.Stars, r.comment
@@ -218,24 +208,22 @@ BEGIN
   JOIN Users u ON r.user_id = u.user_id
   WHERE r.game_id = gameID;
 END;
-//
-DELIMITER ;
+
 
 
 -- E. Blocked/unblocked users
 DROP PROCEDURE IF EXISTS GetUsersByBlockStatus;
-DELIMITER //
+
 CREATE PROCEDURE GetUsersByBlockStatus(IN blockStatus BOOLEAN)
 BEGIN
   SELECT * FROM Users WHERE is_blocked = blockStatus;
 END;
-//
-DELIMITER ;
+
 
 
 -- F. Modify event info
 DROP PROCEDURE IF EXISTS UpdateEvent;
-DELIMITER //
+
 CREATE PROCEDURE UpdateEvent(
   IN e_id INT, IN new_name VARCHAR(50), IN new_desc VARCHAR(255),
   IN new_max INT, IN new_time DATETIME, IN new_vid INT
@@ -249,12 +237,11 @@ BEGIN
       venue_id = new_vid
   WHERE event_id = e_id;
 END;
-//
-DELIMITER ;
+
 
 -- G. Games owned by a user
 DROP PROCEDURE IF EXISTS GetOwnedGames;
-DELIMITER //
+
 CREATE PROCEDURE GetOwnedGames(IN userID INT)
 BEGIN
   SELECT bg.name
@@ -262,8 +249,7 @@ BEGIN
   JOIN BOARD_GAMES bg ON og.game_id = bg.game_id
   WHERE og.user_id = userID;
 END;
-//
-DELIMITER ;
+
 
 
 
