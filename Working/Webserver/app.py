@@ -264,7 +264,7 @@ def login():
         cur = mysql.connection.cursor()
         try:
             cur.execute(
-                "SELECT user_id, username, password, is_admin FROM Users WHERE username = %s",
+                "SELECT user_id, username, password, is_admin, is_blocked FROM Users WHERE username = %s",
                 (username,)
             )
             data = cur.fetchone()
@@ -276,17 +276,42 @@ def login():
 
         if data:
             stored_hashed_password = data[2]
+            is_blocked = data[4]  # 5th column is is_blocked
+
+            if is_blocked:
+                flash('Your account has been blocked. Please contact support.', 'danger')
+                return render_template('login.html', form=form)
+            
             if check_password_hash(stored_hashed_password, password):
-                user = User(id=data[0], username=data[1], role='admin' if data[3] else 'user')
+                role = 'admin' if data[3] else 'user'
+                user = User(id=data[0], username=data[1], role=role)
                 login_user(user)
                 flash('Login successful', 'success')
-                return redirect(url_for('dashboard'))
+
+                # Redirect based on role
+                if role == 'admin':
+                    return redirect(url_for('admin'))
+                else:
+                    return redirect(url_for('profile'))
             else:
                 flash('Incorrect password', 'danger')
         else:
             flash('Username not found', 'danger')
 
     return render_template('login.html', form=form)
+
+
+@app.route('/admin')
+@login_required
+def admin():
+    if current_user.role != 'admin':
+        return "Unauthorized", 403
+    return render_template('admin.html', user=current_user)
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', user=current_user)
 
 
 
