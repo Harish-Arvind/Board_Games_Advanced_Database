@@ -35,7 +35,8 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     cur = mysql.connection.cursor()
-    cur.execute("SELECT user_id, username, is_admin FROM Users WHERE user_id = %s", (user_id,))
+    cur.execute("SELECT user_id, username, is_admin FROM user_info WHERE user_id = %s", (user_id,))
+
     data = cur.fetchone()
     cur.close()
     if data:
