@@ -580,7 +580,7 @@ INSERT INTO GENRES (name) VALUES
 
 -- Insert into users
 INSERT INTO Users (is_admin, username, password, is_blocked) VALUES
-(TRUE, 'user1', 'pass1', FALSE),
+(TRUE, 'Admin1', 'scrypt:32768:8:1$2CK7zgrQTtMvb153$85654cf4c6abc48cca0fadb1546d462bd512ea67a77fae10035d36622b92a972482c4a25a77743cac6792a878f6239201a01818e55d7691619ff0dfe920ba26a', FALSE),
 (FALSE, 'user2', 'pass2', FALSE),
 (FALSE, 'user3', 'pass3', FALSE),
 (FALSE, 'user4', 'pass4', FALSE),
