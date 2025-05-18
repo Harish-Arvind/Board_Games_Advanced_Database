@@ -6,16 +6,23 @@
   </form>
 
   <h2>Recently Updated Games</h2>
-  <ul>
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
     {% for game_id, name, image in recent_games %}
-      <li>
-        <a href="{{ url_for('game_page', game_id=game_id) }}">
-          <img src="{{ url_for('serve_image', game_id=game_id) }}" alt="{{ name }}" width="100">
-          <strong>{{ name }}</strong>
-        </a>
-      </li>
+      <div class="game-card" style="text-align: center; width: 150px;">
+                {% if image.startswith('http') %}
+          <img src="{{ image }}" alt="{{ name }}" width="120" height="120" style="object-fit: cover; border-radius: 10px;">
+        {% else %}
+          <img src="{{ url_for('serve_image', game_id=game_id) }}" alt="{{ name }}" width="120" height="120" style="object-fit: cover; border-radius: 10px;">
+        {% endif %}
+        <div>
+          <a href="{{ url_for('game_page', game_id=game_id) }}">
+            <strong>{{ name }}</strong>
+          </a>
+        </div>
+      </div>
     {% endfor %}
-  </ul>
+  </div>
+
 
 
   <h2>Events</h2>
@@ -26,12 +33,29 @@
           <strong>{{ event_name }}</strong>
         </a><br>
         {{ description }}<br>
-        📅 {{ event_time.strftime('%Y-%m-%d') }} at 🕒 {{ event_time.strftime('%H:%M') }}
+        📅 {{ event_time.strftime('%d-%m-%Y') }} at 🕒 {{ event_time.strftime('%H:%M') }}
         📍 Venue: {{ venue_name }}<br>
         👥 Max Participants: {{ max_participants }}
       </li>
     {% endfor %}
   </ul>
+
+  <style>
+  .game-card img {
+    transition: transform 0.2s;
+  }
+
+  .game-card:hover img {
+    transform: scale(1.05);
+  }
+
+  .game-card {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    padding: 10px;
+    border-radius: 10px;
+    background-color: #fafafa;
+  }
+  </style>
 
 {% endblock %}
 

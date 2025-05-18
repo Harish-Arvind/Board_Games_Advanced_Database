@@ -64,7 +64,7 @@ def setup_database():
     )
     cursor = connection.cursor()
     execute_sql_file(cursor, connection, INSERT_SQL)
-    #execute_sql_file(cursor, connection, VIEWS_TRIGGERS_SQL)
+    execute_sql_file(cursor, connection, VIEWS_TRIGGERS_SQL)
     connection.commit()
     cursor.close()
     connection.close()

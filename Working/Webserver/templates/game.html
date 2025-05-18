@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>🎮 {{ game[0] }}</h2>
+  <img src="{{ game[1] }}" alt="{{ game[0] }}" width="200">
+  <p>{{ game[2] }}</p>
+
+  <ul style="list-style: none; padding: 0; font-size: 1.1em;">
+    <li>📅 <strong>Year Published:</strong> {{ game[3] }}</li>
+    <li>👥 <strong>Players:</strong> {{ game[4] }} – {{ game[5] }}</li>
+    <li>⏱ <strong>Playtime:</strong> {{ game[6] }} – {{ game[7] }} minutes</li>
+    <li>🔞 <strong>Minimum Age:</strong> {{ game[8] }}+</li>
+    <li>🏢 <strong>Publisher:</strong> {{ game[9] }}</li>
+    <li>⭐ <strong>Average Rating:</strong> {{ game[10] }}</li>
+    <li>🏷️ <strong>Genres:</strong> {{ genres | join(', ') }}</li>
+  </ul>
+
+  {% if current_user.is_authenticated %}
+    <form method="POST" action="{{ url_for('add_to_wishlist', game_id=game_id) }}">
+      <button type="submit">💖 Add to Wishlist</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('add_to_owned', game_id=game_id) }}">
+      <button type="submit">📦 Mark as Owned</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('rate_game', game_id=game_id) }}">
+        <label for="rating">⭐ Your Rating (1–5):</label>
+        <input type="number" id="rating" name="rating" min="1" max="5" value="{{ user_rating or '' }}" required>
+
+        <br><label for="comment">💬 Comment:</label><br>
+        <textarea id="comment" name="comment" rows="3" cols="50" placeholder="Share your thoughts about this game..."></textarea>
+
+        <br><button type="submit">✅ Submit Rating</button>
+    </form>
+
+  {% else %}
+    <h3>⭐ Community Ratings</h3>
+    <ul>
+        {% for r in ratings %}
+        <li>
+            <strong>{{ r.username }}</strong> rated it {{ r.stars }}⭐<br>
+            <em>{{ r.comment }}</em>
+        </li>
+    {% else %}
+        <li>No ratings yet. Be the first to rate!</li>
+    {% endfor %}
+    </ul>
+
+    <p><a href="{{ url_for('login') }}">🔐 Log in</a> to add to your collection or rate this game.</p>
+  {% endif %}
+{% endblock %}

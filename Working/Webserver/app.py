@@ -64,7 +64,17 @@ class AddGameForm(FlaskForm):
 def home():
     cur = mysql.connection.cursor()
     cur.execute("SELECT game_id, name, image FROM BOARD_GAMES ORDER BY updated_at DESC LIMIT 10")
-    recent_games = cur.fetchall()
+    rows = cur.fetchall()
+    # Format the image field as either a URL or a flag for BLOB image
+    recent_games = []
+    for row in rows:
+        game_id, name, image = row
+        if isinstance(image, str) and image.startswith('http'):
+            image_path = image  # External image URL
+        else:
+            image_path = "blob"  # Will be handled by /game_image/<id>
+        recent_games.append((game_id, name, image_path))
+
     cur.execute("""
         SELECT E.event_id, E.name, E.description, E.event_time, V.name, E.max_participants
         FROM EVENTS E
@@ -78,8 +88,51 @@ def home():
 
 @app.route('/game/<int:game_id>')
 def game_page(game_id):
-    # You can load full game details here later
-    return f"<h1>Game Page for Game ID: {game_id}</h1>"
+    cur = mysql.connection.cursor()
+
+    # Fetch game info
+    cur.execute("""
+        SELECT name, image, description, year_published, min_players, max_players,
+               min_playtime, max_playtime, min_age, publisher, average_rating
+        FROM BOARD_GAMES
+        WHERE game_id = %s
+    """, (game_id,))
+    game = cur.fetchone()
+
+    if not game:
+        return "Game not found", 404
+
+    # Fetch genres
+    cur.execute("""
+        SELECT G.name FROM GENRES G
+        JOIN IsOfGenre IG ON G.genre_id = IG.genre_id
+        WHERE IG.game_id = %s
+    """, (game_id,))
+    genres = [row[0] for row in cur.fetchall()]
+
+    # Fetch user's rating if logged in
+    user_rating = None
+    if current_user.is_authenticated:
+        cur.execute("""
+            SELECT Stars FROM Rating
+            WHERE user_id = %s AND game_id = %s
+        """, (current_user.id, game_id))
+        rating_result = cur.fetchone()
+        user_rating = rating_result[0] if rating_result else None
+
+    # After user_rating section in game_page()
+    cur.execute("""
+        SELECT U.username, R.Stars, R.comment
+        FROM Rating R
+        JOIN Users U ON R.user_id = U.user_id
+        WHERE R.game_id = %s
+        ORDER BY R.Stars DESC
+    """, (game_id,))
+    ratings = [{'username': row[0], 'stars': row[1], 'comment': row[2]} for row in cur.fetchall()]
+
+    cur.close()
+
+    return render_template("game.html", game=game, genres=genres, user_rating=user_rating, game_id=game_id, ratings=ratings)
 
 
 @app.route('/game_image/<int:game_id>')
@@ -92,6 +145,65 @@ def serve_image(game_id):
     if result and result[0]:
         return send_file(BytesIO(result[0]), mimetype='image/jpeg')
     return '', 404
+
+@app.route('/events/<int:event_id>', methods=['GET', 'POST'])
+def event_detail(event_id):
+    cur = mysql.connection.cursor()
+
+    # Get event and venue details
+    cur.execute("""
+        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
+               V.name, V.address, V.max_capacity
+        FROM EVENTS E
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE E.event_id = %s
+    """, (event_id,))
+    event = cur.fetchone()
+
+    if not event:
+        cur.close()
+        return "Event not found", 404
+
+    user_id = current_user.get_id() if current_user.is_authenticated else None
+
+    # Check if the user is already enrolled
+    is_enrolled = False
+    if user_id:
+        cur.execute("""
+            SELECT 1 FROM ParticipateTo WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        is_enrolled = cur.fetchone() is not None
+
+    cur.close()
+    return render_template('event.html', event=event, event_id=event_id, is_enrolled=is_enrolled)
+
+@app.route('/events/<int:event_id>/enroll', methods=['POST'])
+@login_required
+def enroll_event(event_id):
+    user_id = current_user.get_id()
+    cur = mysql.connection.cursor()
+
+    # Check if already enrolled
+    cur.execute("SELECT 1 FROM ParticipateTo WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+    if cur.fetchone():
+        flash("You are already enrolled in this event.")
+        cur.close()
+        return redirect(url_for('event_detail', event_id=event_id))
+
+    # Enroll the user
+    try:
+        cur.execute("INSERT INTO ParticipateTo (event_id, user_id) VALUES (%s, %s)", (event_id, user_id))
+        cur.execute("UPDATE EVENTS SET nb_participant = nb_participant + 1 WHERE event_id = %s", (event_id,))
+        mysql.connection.commit()
+        flash("Successfully enrolled!")
+    except Exception as e:
+        mysql.connection.rollback()
+        flash("Enrollment failed.")
+        print(f"Error: {e}")
+    finally:
+        cur.close()
+
+    return redirect(url_for('event_detail', event_id=event_id))
 
 
 @app.route('/search')
@@ -233,65 +345,51 @@ def add_game():
         return redirect(url_for('admin_panel'))
     return render_template('add_game.html', form=form)
 
-@app.route('/add_to_owned/<int:game_id>', methods=['POST'])
-@login_required
-def add_to_owned(game_id):
-    cur = mysql.connection.cursor()
-    cur.execute("INSERT IGNORE INTO GameOwned (game_id, user_id, since) VALUES (%s, %s, %s)", (game_id, current_user.id, date.today()))
-    mysql.connection.commit()
-    cur.close()
-    flash('Game added to your owned list.')
-    return redirect(url_for('dashboard'))
-
-@app.route('/add_to_wishlist/<int:game_id>', methods=['POST'])
+@app.route('/wishlist/<int:game_id>', methods=['POST'])
 @login_required
 def add_to_wishlist(game_id):
     cur = mysql.connection.cursor()
-    cur.execute("INSERT IGNORE INTO WishList (game_id, user_id) VALUES (%s, %s)", (game_id, current_user.id))
-    mysql.connection.commit()
-    cur.close()
-    flash('Game added to your wishlist.')
-    return redirect(url_for('dashboard'))
+    try:
+        cur.execute("INSERT IGNORE INTO WishList (game_id, user_id) VALUES (%s, %s)", (game_id, current_user.id))
+        mysql.connection.commit()
+    finally:
+        cur.close()
+    return redirect(url_for('game_page', game_id=game_id))
 
-@app.route('/rate_game/<int:game_id>', methods=['POST'])
+
+@app.route('/owned/<int:game_id>', methods=['POST'])
+@login_required
+def add_to_owned(game_id):
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("INSERT IGNORE INTO GameOwned (game_id, user_id, since) VALUES (%s, %s, CURDATE())", (game_id, current_user.id))
+        mysql.connection.commit()
+    finally:
+        cur.close()
+    return redirect(url_for('game_page', game_id=game_id))
+
+
+@app.route('/rate/<int:game_id>', methods=['POST'])
 @login_required
 def rate_game(game_id):
-    rating = request.form.get('rating')
-    comment = request.form.get('comment', '')
-    if not rating or not rating.isdigit() or not (1 <= int(rating) <= 5):
-        flash('Invalid rating. Please choose a number from 1 to 5.')
-        return redirect(url_for('dashboard'))
+    rating = int(request.form['rating'])
+    comment = request.form.get('comment', '').strip()
+
+    if not (1 <= rating <= 5):
+        return "Invalid rating value", 400
+
     cur = mysql.connection.cursor()
-    cur.execute("""
-        INSERT INTO Rating (user_id, game_id, Stars, comment)
-        VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE Stars = VALUES(Stars), comment = VALUES(comment)
-    """, (current_user.id, game_id, int(rating), comment))
-    mysql.connection.commit()
-    cur.close()
-    flash('Rating submitted.')
-    return redirect(url_for('dashboard'))
+    try:
+        cur.execute("""
+            INSERT INTO Rating (user_id, game_id, Stars, comment)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE Stars = %s, comment = %s
+        """, (current_user.id, game_id, rating, comment, rating, comment))
+        mysql.connection.commit()
+    finally:
+        cur.close()
 
-@app.route('/events/<int:event_id>')
-def event_detail(event_id):
-    cur = mysql.connection.cursor()
-
-    # Get event details
-    cur.execute("""
-        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
-               V.name, V.address, V.max_capacity
-        FROM EVENTS E
-        JOIN VENUE V ON E.venue_id = V.venue_id
-        WHERE E.event_id = %s
-    """, (event_id,))
-    event = cur.fetchone()
-    cur.close()
-
-    if not event:
-        return "Event not found", 404
-
-    return render_template('events.html', event=event)
-
+    return redirect(url_for('game_page', game_id=game_id))
 
 if __name__ == '__main__':
     app.run(debug=True)
