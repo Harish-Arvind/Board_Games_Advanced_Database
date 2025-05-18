@@ -1,6 +1,70 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h2>User Panel</h2>
-  <p>Welcome, USer!</p>
-  <p><a href="{{ url_for('add_game') }}">Add New Game</a></p>
+
+<h1>Welcome, {{ user['username'] }}</h1>
+
+  <hr>
+  <h2>🎲 Owned Games</h2>
+  {% if owned_games %}
+    <ul>
+      {% for game in owned_games %}
+        <li>
+          <strong>{{ game['name'] }}</strong> (Owned since: {{ game['since'] }})
+          {% if game['image'] %}
+            <br><img src="{{ game['image'] }}" alt="{{ game['name'] }}" width="100">
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No owned games yet.</p>
+  {% endif %}
+
+  <hr>
+  <h2>💖 Wishlist</h2>
+  {% if wishlist %}
+    <ul>
+      {% for game in wishlist %}
+        <li>
+          <strong>{{ game['name'] }}</strong>
+          {% if game['image'] %}
+            <br><img src="{{ game['image'] }}" alt="{{ game['name'] }}" width="100">
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Your wishlist is empty.</p>
+  {% endif %}
+
+  <hr>
+  <h2>⭐ Your Ratings</h2>
+  {% if ratings %}
+    <ul>
+      {% for rating in ratings %}
+        <li>
+          <strong>{{ rating['name'] }}</strong>: {{ rating['Stars'] }} stars
+          <br><em>{{ rating['comment'] }}</em>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No ratings submitted yet.</p>
+  {% endif %}
+
+  <hr>
+  <h2>📅 Events You're Participating In</h2>
+  {% if events %}
+    <ul>
+      {% for event in events %}
+        <li>
+          <strong>{{ event['name'] }}</strong> at {{ event['venue_name'] }} on {{ event['event_time'] }}
+          <br>{{ event['description'] }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You are not registered for any events.</p>
+  {% endif %}
+
 {% endblock %}

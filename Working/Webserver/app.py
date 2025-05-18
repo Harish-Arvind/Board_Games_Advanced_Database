@@ -11,6 +11,9 @@ from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 from wtforms.validators import DataRequired, Length
 from flask_wtf import FlaskForm
+from datetime import datetime
+import MySQLdb.cursors
+
 
 
 app = Flask(__name__)
@@ -241,46 +244,6 @@ def edit_event(event_id):
 
 
 
-@app.route('/admin/events/<int:event_id>/edit', methods=['GET', 'POST'])
-@login_required
-def edit_event(event_id):
-    if current_user.role != 'admin':
-        flash('Unauthorized access', 'danger')
-        return redirect(url_for('dashboard'))
-
-    cur = mysql.connection.cursor()
-
-    if request.method == 'POST':
-        name = request.form['name']
-        description = request.form['description']
-        event_time = request.form['event_time']
-        max_participants = request.form['max_participants']
-        venue_id = request.form['venue_id']
-
-        cur.execute("""
-            UPDATE EVENTS
-            SET name=%s, description=%s, event_time=%s, max_participants=%s, venue_id=%s
-            WHERE event_id=%s
-        """, (name, description, event_time, max_participants, venue_id, event_id))
-
-        mysql.connection.commit()
-        cur.close()
-        flash('Event updated successfully.', 'success')
-        return redirect(url_for('admin_events'))
-
-    # GET request: show form with existing data
-    cur.execute("SELECT * FROM EVENTS WHERE event_id = %s", (event_id,))
-    event = cur.fetchone()
-
-    cur.execute("SELECT venue_id, name FROM VENUE")
-    venues = cur.fetchall()
-    cur.close()
-
-    return render_template('Admin/edit_event.html', event=event, venues=venues)
-
-
-
-
 @app.route('/search_games')
 def search_games():
     page = request.args.get('page', 1, type=int)
@@ -438,10 +401,10 @@ def admin():
         return "Unauthorized", 403
     return render_template('/Admin/admin.html', user=current_user)
 
-@app.route('/profile')
-@login_required
-def profile():
-    return render_template('profile.html', user=current_user)
+# @app.route('/profile')
+# @login_required
+# def profile():
+#     return render_template('profile.html', user=current_user)
 
 
 
@@ -456,6 +419,107 @@ def block_user(user_id):
     cur.close()
     flash('User blocked.')
     return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/games/edit/<int:game_id>', methods=['GET', 'POST'])
+@login_required
+def edit_game(game_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # DictCursor here too
+
+    if request.method == 'POST':
+        name = request.form['name']
+        image = request.form['image']
+        description = request.form['description']
+        year_published = request.form['year_published']
+        min_players = request.form['min_players']
+        max_players = request.form['max_players']
+        min_playtime = request.form['min_playtime']
+        max_playtime = request.form['max_playtime']
+        min_age = request.form['min_age']
+        publisher = request.form['publisher']
+        average_rating = request.form['average_rating']
+        updated_at = datetime.now()
+
+        cur.execute("""
+            UPDATE BOARD_GAMES
+            SET name=%s, image=%s, description=%s, year_published=%s,
+                min_players=%s, max_players=%s, min_playtime=%s,
+                max_playtime=%s, min_age=%s, publisher=%s,
+                average_rating=%s, updated_at=%s
+            WHERE game_id=%s
+        """, (
+            name, image, description, year_published, min_players, max_players,
+            min_playtime, max_playtime, min_age, publisher, average_rating, updated_at, game_id
+        ))
+
+        mysql.connection.commit()
+        cur.close()
+        flash('Game updated successfully', 'success')
+        return redirect(url_for('admin_games'))
+
+    # GET: Show the edit form
+    cur.execute("SELECT * FROM BOARD_GAMES WHERE game_id = %s", (game_id,))
+    game = cur.fetchone()
+    cur.close()
+    return render_template('Admin/edit_game.html', game=game)
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    user_id = current_user.id  # Flask-Login provides this
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # Owned games
+    cur.execute("""
+        SELECT B.game_id, B.name, B.image, G.since
+        FROM GameOwned G
+        JOIN BOARD_GAMES B ON G.game_id = B.game_id
+        WHERE G.user_id = %s
+    """, (user_id,))
+    owned_games = cur.fetchall()
+
+    # Wishlist
+    cur.execute("""
+        SELECT B.game_id, B.name, B.image
+        FROM WishList W
+        JOIN BOARD_GAMES B ON W.game_id = B.game_id
+        WHERE W.user_id = %s
+    """, (user_id,))
+    wishlist = cur.fetchall()
+
+    # Ratings
+    cur.execute("""
+        SELECT B.name, R.Stars, R.comment
+        FROM Rating R
+        JOIN BOARD_GAMES B ON R.game_id = B.game_id
+        WHERE R.user_id = %s
+    """, (user_id,))
+    ratings = cur.fetchall()
+
+    # Events
+    cur.execute("""
+        SELECT E.name, E.description, E.event_time, V.name AS venue_name
+        FROM ParticipateTo P
+        JOIN EVENTS E ON P.event_id = E.event_id
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE P.user_id = %s
+    """, (user_id,))
+    events = cur.fetchall()
+
+    cur.close()
+
+    return render_template('profile.html',
+                           user=current_user,  # You can still access current_user.username
+                           owned_games=owned_games,
+                           wishlist=wishlist,
+                           ratings=ratings,
+                           events=events)
 
 
 @app.route('/logout')
@@ -492,10 +556,11 @@ def admin_games():
         flash('Unauthorized access', 'danger')
         return redirect(url_for('dashboard'))
 
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM BOARD_GAMES")
-    games = cur.fetchall()
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # DictCursor here
+    cur.execute("SELECT game_id, name, year_published, publisher FROM BOARD_GAMES")
+    games = cur.fetchall()  # Now games is a list of dictionaries
     cur.close()
+
     return render_template('Admin/games.html', games=games)
 
 
