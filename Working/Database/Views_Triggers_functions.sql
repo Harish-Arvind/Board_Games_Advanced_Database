@@ -41,8 +41,8 @@ CREATE OR REPLACE VIEW Game_Details AS
 SELECT 
     game_id,
     name,
-    image,
     description,
+    image,
     year_published,
     min_players,
     max_players,
@@ -52,6 +52,7 @@ SELECT
     publisher,
     average_rating
 FROM BOARD_GAMES;
+
 
 
 -- Game Genres
