@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Edit Game</h2>
+<form method="POST">
+    Name: <input type="text" name="name" value="{{ game.name }}"><br>
+    Image URL: <input type="text" name="image" value="{{ game.image }}"><br>
+    Description: <textarea name="description">{{ game.description }}</textarea><br>
+    Year Published: <input type="number" name="year_published" value="{{ game.year_published }}"><br>
+    Min Players: <input type="number" name="min_players" value="{{ game.min_players }}"><br>
+    Max Players: <input type="number" name="max_players" value="{{ game.max_players }}"><br>
+    Min Playtime: <input type="number" name="min_playtime" value="{{ game.min_playtime }}"><br>
+    Max Playtime: <input type="number" name="max_playtime" value="{{ game.max_playtime }}"><br>
+    Min Age: <input type="number" name="min_age" value="{{ game.min_age }}"><br>
+    Publisher: <input type="text" name="publisher" value="{{ game.publisher }}"><br>
+    Avg Rating: <input type="number" step="0.01" name="average_rating" value="{{ game.average_rating }}"><br>
+    <input type="submit" value="Update Game">
+</form>
+{% endblock %}

@@ -2,7 +2,7 @@
 # Install dependencies:
 # pip install flask flask-mysqldb flask-login flask-wtf wtforms
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
 from flask_mysqldb import MySQL
 from io import BytesIO
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
@@ -11,6 +11,9 @@ from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 from wtforms.validators import DataRequired, Length
 from flask_wtf import FlaskForm
+from datetime import datetime
+import MySQLdb.cursors
+
 
 
 app = Flask(__name__)
@@ -224,43 +227,40 @@ def edit_event(event_id):
     return render_template('Admin/edit_event.html', event=event, venues=venues)
 
 
-
-@app.route('/admin/events/<int:event_id>/edit', methods=['GET', 'POST'])
+@app.route('/admin/games/add', methods=['GET', 'POST'])
 @login_required
-def edit_event(event_id):
+def add_game():
     if current_user.role != 'admin':
-        flash('Unauthorized access', 'danger')
-        return redirect(url_for('dashboard'))
-
-    cur = mysql.connection.cursor()
+        abort(403)
 
     if request.method == 'POST':
         name = request.form['name']
+        image = request.form['image']
         description = request.form['description']
-        event_time = request.form['event_time']
-        max_participants = request.form['max_participants']
-        venue_id = request.form['venue_id']
+        year_published = request.form['year_published']
+        min_players = request.form['min_players']
+        max_players = request.form['max_players']
+        min_playtime = request.form['min_playtime']
+        max_playtime = request.form['max_playtime']
+        min_age = request.form['min_age']
+        publisher = request.form['publisher']
+        average_rating = request.form['average_rating']
 
+        cur = mysql.connection.cursor()
         cur.execute("""
-            UPDATE EVENTS
-            SET name=%s, description=%s, event_time=%s, max_participants=%s, venue_id=%s
-            WHERE event_id=%s
-        """, (name, description, event_time, max_participants, venue_id, event_id))
-
+            INSERT INTO BOARD_GAMES (name, image, description, year_published, min_players, max_players,
+                                      min_playtime, max_playtime, min_age, publisher, average_rating)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (name, image, description, year_published, min_players, max_players,
+              min_playtime, max_playtime, min_age, publisher, average_rating))
         mysql.connection.commit()
         cur.close()
-        flash('Event updated successfully.', 'success')
-        return redirect(url_for('admin_events'))
 
-    # GET request: show form with existing data
-    cur.execute("SELECT * FROM EVENTS WHERE event_id = %s", (event_id,))
-    event = cur.fetchone()
+        flash('Game added successfully!')
+        return redirect(url_for('admin_games'))
 
-    cur.execute("SELECT venue_id, name FROM VENUE")
-    venues = cur.fetchall()
-    cur.close()
+    return render_template('Admin/add_game.html')
 
-    return render_template('Admin/edit_event.html', event=event, venues=venues)
 
 
 
@@ -422,10 +422,10 @@ def admin():
         return "Unauthorized", 403
     return render_template('/Admin/admin.html', user=current_user)
 
-@app.route('/profile')
-@login_required
-def profile():
-    return render_template('profile.html', user=current_user)
+# @app.route('/profile')
+# @login_required
+# def profile():
+#     return render_template('profile.html', user=current_user)
 
 
 
@@ -440,6 +440,109 @@ def block_user(user_id):
     cur.close()
     flash('User blocked.')
     return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/games/edit/<int:game_id>', methods=['GET', 'POST'])
+@login_required
+def edit_game(game_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('dashboard'))
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # DictCursor here too
+
+    if request.method == 'POST':
+        name = request.form['name']
+        image = request.form['image']
+        description = request.form['description']
+        year_published = request.form['year_published']
+        min_players = request.form['min_players']
+        max_players = request.form['max_players']
+        min_playtime = request.form['min_playtime']
+        max_playtime = request.form['max_playtime']
+        min_age = request.form['min_age']
+        publisher = request.form['publisher']
+        average_rating = request.form['average_rating']
+        updated_at = datetime.now()
+
+        cur.execute("""
+            UPDATE BOARD_GAMES
+            SET name=%s, image=%s, description=%s, year_published=%s,
+                min_players=%s, max_players=%s, min_playtime=%s,
+                max_playtime=%s, min_age=%s, publisher=%s,
+                average_rating=%s, updated_at=%s
+            WHERE game_id=%s
+        """, (
+            name, image, description, year_published, min_players, max_players,
+            min_playtime, max_playtime, min_age, publisher, average_rating, updated_at, game_id
+        ))
+
+        mysql.connection.commit()
+        cur.close()
+        flash('Game updated successfully', 'success')
+        return redirect(url_for('admin_games'))
+
+    # GET: Show the edit form
+    cur.execute("SELECT * FROM BOARD_GAMES WHERE game_id = %s", (game_id,))
+    game = cur.fetchone()
+    cur.close()
+    return render_template('Admin/edit_game.html', game=game)
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    if current_user.role == 'admin':
+        abort(403)  # Forbidden
+    user_id = current_user.id  # Flask-Login provides this
+
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # Owned games
+    cur.execute("""
+        SELECT B.game_id, B.name, B.image, G.since
+        FROM GameOwned G
+        JOIN BOARD_GAMES B ON G.game_id = B.game_id
+        WHERE G.user_id = %s
+    """, (user_id,))
+    owned_games = cur.fetchall()
+
+    # Wishlist
+    cur.execute("""
+        SELECT B.game_id, B.name, B.image
+        FROM WishList W
+        JOIN BOARD_GAMES B ON W.game_id = B.game_id
+        WHERE W.user_id = %s
+    """, (user_id,))
+    wishlist = cur.fetchall()
+
+    # Ratings
+    cur.execute("""
+        SELECT B.name, R.Stars, R.comment
+        FROM Rating R
+        JOIN BOARD_GAMES B ON R.game_id = B.game_id
+        WHERE R.user_id = %s
+    """, (user_id,))
+    ratings = cur.fetchall()
+
+    # Events
+    cur.execute("""
+        SELECT E.name, E.description, E.event_time, V.name AS venue_name
+        FROM ParticipateTo P
+        JOIN EVENTS E ON P.event_id = E.event_id
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE P.user_id = %s
+    """, (user_id,))
+    events = cur.fetchall()
+
+    cur.close()
+
+    return render_template('profile.html',
+                           user=current_user,  # You can still access current_user.username
+                           owned_games=owned_games,
+                           wishlist=wishlist,
+                           ratings=ratings,
+                           events=events)
 
 
 @app.route('/logout')
@@ -476,10 +579,11 @@ def admin_games():
         flash('Unauthorized access', 'danger')
         return redirect(url_for('dashboard'))
 
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM BOARD_GAMES")
-    games = cur.fetchall()
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # DictCursor here
+    cur.execute("SELECT game_id, name, year_published, publisher FROM BOARD_GAMES")
+    games = cur.fetchall()  # Now games is a list of dictionaries
     cur.close()
+
     return render_template('Admin/games.html', games=games)
 
 
@@ -533,21 +637,21 @@ def toggle_block_user(user_id):
     cur.close()
     return redirect(url_for('admin_users'))
 
-@app.route('/add_game', methods=['GET', 'POST'])
-@login_required
-def add_game():
-    if current_user.role != 'admin':
-        return redirect(url_for('home'))
-    form = AddGameForm(request.form)
-    if request.method == 'POST' and form.validate():
-        cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO BOARD_GAMES (name, publisher, min_players, max_players, updated_at, average_rating) VALUES (%s, %s, 2, 4, NOW(), 0.0)",
-                    (form.title.data, form.genre.data))
-        mysql.connection.commit()
-        cur.close()
-        flash('Game added successfully')
-        return redirect(url_for('admin_panel'))
-    return render_template('add_game.html', form=form)
+# @app.route('/add_game', methods=['GET', 'POST'])
+# @login_required
+# def add_game():
+#     if current_user.role != 'admin':
+#         return redirect(url_for('home'))
+#     form = AddGameForm(request.form)
+#     if request.method == 'POST' and form.validate():
+#         cur = mysql.connection.cursor()
+#         cur.execute("INSERT INTO BOARD_GAMES (name, publisher, min_players, max_players, updated_at, average_rating) VALUES (%s, %s, 2, 4, NOW(), 0.0)",
+#                     (form.title.data, form.genre.data))
+#         mysql.connection.commit()
+#         cur.close()
+#         flash('Game added successfully')
+#         return redirect(url_for('admin_panel'))
+#     return render_template('add_game.html', form=form)
 
 @app.route('/wishlist/<int:game_id>', methods=['POST'])
 @login_required
@@ -571,6 +675,88 @@ def add_to_owned(game_id):
     finally:
         cur.close()
     return redirect(url_for('game_page', game_id=game_id))
+
+
+
+# @app.route('/events')
+# def events():
+#     # Fetch all events and venues from DB
+#     events = get_all_events()  # implement this function to get events from DB
+#     return render_template('events.html', events=events)
+
+# @app.route('/add_event', methods=['GET', 'POST'])
+# def add_event():
+#     venues = get_all_venues()  # fetch venues for dropdown
+#     if request.method == 'POST':
+#         # Read form data
+#         name = request.form['name']
+#         description = request.form['description']
+#         event_time = request.form['event_time']
+#         max_participants = int(request.form['max_participants'])
+#         venue_id = int(request.form['venue_id'])
+
+#         # Save new event to DB (implement this function)
+#         add_event_to_db(name, description, event_time, max_participants, venue_id)
+
+#         flash('Event added successfully!')
+#         return redirect(url_for('events'))
+
+#     return render_template('add_event.html', venues=venues)
+
+# @app.route('/edit_event/<int:event_id>', methods=['GET', 'POST'])
+# def edit_event(event_id):
+#     venues = get_all_venues()
+#     event = get_event_by_id(event_id)  # Fetch event tuple/list from DB
+
+#     if request.method == 'POST':
+#         # Update event in DB
+#         name = request.form['name']
+#         description = request.form['description']
+#         event_time = request.form['event_time']
+#         max_participants = int(request.form['max_participants'])
+#         venue_id = int(request.form['venue_id'])
+
+#         update_event_in_db(event_id, name, description, event_time, max_participants, venue_id)
+
+#         flash('Event updated successfully!')
+#         return redirect(url_for('events'))
+
+#     return render_template('edit_event.html', event=event, venues=venues)
+
+@app.route('/admin/events/add', methods=['GET', 'POST'])
+@login_required
+def add_event():
+    if current_user.role != 'admin':
+        abort(403)  # forbid non-admins
+
+    cur = mysql.connection.cursor()
+
+    # Get venues for the dropdown (on GET)
+    cur.execute('SELECT venue_id, name FROM VENUE')
+    venues = cur.fetchall()
+
+    if request.method == 'POST':
+        name = request.form['name']
+        description = request.form['description']
+        event_time = request.form['event_time']  # format: 'YYYY-MM-DDTHH:MM'
+        max_participants = int(request.form['max_participants'])
+        venue_id = int(request.form['venue_id'])
+
+        # nb_participant = 0 on new event
+        cur.execute('''
+            INSERT INTO EVENTS (name, description, max_participants, nb_participant, event_time, venue_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (name, description, max_participants, 0, event_time.replace('T', ' '), venue_id))
+
+        mysql.connection.commit()
+        cur.close()
+
+        flash('Event added successfully!')
+        return redirect(url_for('events'))
+
+    cur.close()
+    return render_template('Admin/add_event.html', venues=venues)
+
 
 
 @app.route('/rate/<int:game_id>', methods=['POST'])
@@ -597,3 +783,7 @@ def rate_game(game_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
+

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Add New Event</h2>
+
+<form method="POST">
+  <label>Name:</label>
+  <input type="text" name="name" required><br>
+
+  <label>Description:</label>
+  <textarea name="description" required></textarea><br>
+
+  <label>Event Time:</label>
+  <input type="datetime-local" name="event_time" required><br>
+
+  <label>Max Participants:</label>
+  <input type="number" name="max_participants" required><br>
+
+  <label>Venue:</label>
+  <select name="venue_id" required>
+    {% for venue in venues %}
+      <option value="{{ venue[0] }}">{{ venue[1] }}</option>
+    {% endfor %}
+  </select><br>
+
+  <button type="submit">Add Event</button>
+</form>
+{% endblock %}
