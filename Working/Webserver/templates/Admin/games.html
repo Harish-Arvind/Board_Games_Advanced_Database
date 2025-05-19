@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Game Management</h2>
+
+<a href="{{ url_for('add_game') }}" class="button">Add New Game</a>
+
 <table>
   <tr><th>Name</th><th>Year</th><th>Publisher</th><th>Actions</th></tr>
   {% for game in games %}

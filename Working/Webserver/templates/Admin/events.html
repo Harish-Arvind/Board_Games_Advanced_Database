@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Event Management</h2>
+
+<a href="{{ url_for('add_event') }}">Add New Event</a>
+
 <table>
   <tr><th>Name</th><th>Description</th><th>Time</th><th>Venue</th><th>Action</th></tr>
   {% for event in events %}
