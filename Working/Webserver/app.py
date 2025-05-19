@@ -15,6 +15,7 @@ from datetime import datetime
 import MySQLdb.cursors
 
 
+from database import submit_user_rating
 
 app = Flask(__name__)
 app.secret_key = 'dont tell anyone'
@@ -766,18 +767,14 @@ def rate_game(game_id):
     comment = request.form.get('comment', '').strip()
 
     if not (1 <= rating <= 5):
-        return "Invalid rating value", 400
+        return "Invalid rating", 400
 
-    cur = mysql.connection.cursor()
     try:
-        cur.execute("""
-            INSERT INTO Rating (user_id, game_id, Stars, comment)
-            VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE Stars = %s, comment = %s
-        """, (current_user.id, game_id, rating, comment, rating, comment))
-        mysql.connection.commit()
-    finally:
-        cur.close()
+        submit_user_rating(mysql, current_user.id, game_id, rating, comment)
+        flash("✅ Rating submitted successfully.", "success")
+    except Exception as e:
+        print("Error during transaction:", e)
+        flash("❌ Failed to submit rating.", "danger")
 
     return redirect(url_for('game_page', game_id=game_id))
 
