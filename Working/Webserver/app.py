@@ -227,6 +227,10 @@ def edit_event(event_id):
     return render_template('Admin/edit_event.html', event=event, venues=venues)
 
 
+from datetime import datetime
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
 @app.route('/admin/games/add', methods=['GET', 'POST'])
 @login_required
 def add_game():
@@ -249,10 +253,10 @@ def add_game():
         cur = mysql.connection.cursor()
         cur.execute("""
             INSERT INTO BOARD_GAMES (name, image, description, year_published, min_players, max_players,
-                                      min_playtime, max_playtime, min_age, publisher, average_rating)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                      min_playtime, max_playtime, min_age, publisher, updated_at, average_rating)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (name, image, description, year_published, min_players, max_players,
-              min_playtime, max_playtime, min_age, publisher, average_rating))
+              min_playtime, max_playtime, min_age, publisher, now, average_rating))
         mysql.connection.commit()
         cur.close()
 
@@ -752,7 +756,7 @@ def add_event():
         cur.close()
 
         flash('Event added successfully!')
-        return redirect(url_for('Admin/events'))
+        return redirect(url_for('admin_events'))
 
     cur.close()
     return render_template('Admin/add_event.html', venues=venues)
