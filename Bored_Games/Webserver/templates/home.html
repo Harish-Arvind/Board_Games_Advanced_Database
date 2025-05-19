@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+
+  <h2>Recently Updated Games</h2>
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+    {% for game_id, name, image in recent_games %}
+      <div class="game-card" style="text-align: center; width: 150px;">
+                {% if image.startswith('http') %}
+          <img src="{{ image }}" alt="{{ name }}" width="120" height="120" style="object-fit: cover; border-radius: 10px;">
+        {% else %}
+          <img src="{{ url_for('serve_image', game_id=game_id) }}" alt="{{ name }}" width="120" height="120" style="object-fit: cover; border-radius: 10px;">
+        {% endif %}
+        <div>
+          <a href="{{ url_for('game_page', game_id=game_id) }}">
+            <strong>{{ name }}</strong>
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+
+
+  <h2>Events</h2>
+  <ul>
+    {% for event_id, event_name, description, event_time, venue_name, max_participants in events %}
+      <li>
+        <a href="{{ url_for('event_detail', event_id=event_id) }}">
+          <strong>{{ event_name }}</strong>
+        </a><br>
+        {{ description }}<br>
+        📅 {{ event_time.strftime('%d-%m-%Y') }} at 🕒 {{ event_time.strftime('%H:%M') }}
+        📍 Venue: {{ venue_name }}<br>
+      </li>
+    {% endfor %}
+  </ul>
+
+{% endblock %}
+

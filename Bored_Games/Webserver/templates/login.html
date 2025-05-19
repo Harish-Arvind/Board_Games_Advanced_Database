@@ -1,0 +1,46 @@
+<<<<<<< HEAD:Working/Webserver/templates/login.html
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Login</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <p>{{ form.username.label }} {{ form.username(size=32) }}</p>
+        <p>{{ form.password.label }} {{ form.password(size=32) }}</p>
+        <p><input type="submit" value="Login"></p>
+    </form>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for msg in messages %}
+                    <li>{{ msg }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+=======
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <p>{{ form.username.label }} {{ form.username(size=32) }}</p>
+        <p>{{ form.password.label }} {{ form.password(size=32) }}</p>
+        <p><input type="submit" value="Login"></p>
+    </form>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for msg in messages %}
+                    <li>{{ msg }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>
+>>>>>>> Nissanth:Bored_Games/Webserver/templates/login.html
