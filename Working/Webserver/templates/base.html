@@ -7,25 +7,27 @@
 </head>
 <body>
   <nav>
-    <a href="{{ url_for('home') }}">Home</a>
-    {% if current_user.is_authenticated and current_user.role != 'admin' %}
-      <a href="{{ url_for('profile') }}">Profile</a>
-      <a href="{{ url_for('search_games') }}">Games</a>
-    {% endif %}
-    {% if current_user.is_authenticated %}
-      <!-- <a href="{{ url_for('dashboard') }}">Dashboard</a> -->
-     {% if current_user.role == 'admin' %}
-        <!-- <a href="{{ url_for('admin_panel') }}">Admin</a> -->
-        <a href="{{ url_for('admin_games') }}">Game Management</a>
-        <a href="{{ url_for('admin_events') }}">Event Management</a>
-        <a href="{{ url_for('admin_users') }}">User Management</a>
-      {% endif %}
-      <a href="{{ url_for('logout') }}">Logout</a>
+  <a href="{{ url_for('home') }}">Home</a>
+
+  {% if not current_user.is_authenticated or current_user.role != 'admin' %}
+    <a href="{{ url_for('search_games') }}">Games</a>
+  {% endif %}
+
+  {% if current_user.is_authenticated %}
+    {% if current_user.role == 'admin' %}
+      <a href="{{ url_for('admin_games') }}">Game Management</a>
+      <a href="{{ url_for('admin_events') }}">Event Management</a>
+      <a href="{{ url_for('admin_users') }}">User Management</a>
     {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Register</a>
+      <a href="{{ url_for('profile') }}">Profile</a>
     {% endif %}
-  </nav>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  {% else %}
+    <a href="{{ url_for('login') }}">Login</a>
+    <a href="{{ url_for('register') }}">Register</a>
+  {% endif %}
+</nav>
+
   <div class="container">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
