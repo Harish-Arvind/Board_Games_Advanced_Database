@@ -13,6 +13,7 @@ from wtforms.validators import DataRequired, Length
 from flask_wtf import FlaskForm
 from datetime import datetime
 import MySQLdb.cursors
+now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
 from database import submit_user_rating
