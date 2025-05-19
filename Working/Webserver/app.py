@@ -64,7 +64,7 @@ class AddGameForm(FlaskForm):
 @app.route('/')
 def home():
     cur = mysql.connection.cursor()
-    cur.execute("SELECT game_id, name, image FROM BOARD_GAMES ORDER BY updated_at DESC LIMIT 10")
+    cur.execute("SELECT game_id, name, image FROM Recent_Games")
     rows = cur.fetchall()
     # Format the image field as either a URL or a flag for BLOB image
     recent_games = []
@@ -76,13 +76,7 @@ def home():
             image_path = "blob"  # Will be handled by /game_image/<id>
         recent_games.append((game_id, name, image_path))
 
-    cur.execute("""
-        SELECT E.event_id, E.name, E.description, E.event_time, V.name, E.max_participants
-        FROM EVENTS E
-        JOIN VENUE V ON E.venue_id = V.venue_id
-        WHERE E.event_time >= NOW()
-        ORDER BY E.event_time
-    """)
+    cur.execute("SELECT * FROM Upcoming_Events")
     events = cur.fetchall()
     cur.close()
     return render_template('home.html', recent_games=recent_games, events=events)
@@ -92,30 +86,21 @@ def game_page(game_id):
     cur = mysql.connection.cursor()
 
     # Fetch game info
-    cur.execute("""
-        SELECT name, image, description, year_published, min_players, max_players,
-               min_playtime, max_playtime, min_age, publisher, average_rating
-        FROM BOARD_GAMES
-        WHERE game_id = %s
-    """, (game_id,))
+    cur.execute("SELECT * FROM Game_Details WHERE game_id = %s", (game_id,))
     game = cur.fetchone()
 
     if not game:
         return "Game not found", 404
 
     # Fetch genres
-    cur.execute("""
-        SELECT G.name FROM GENRES G
-        JOIN IsOfGenre IG ON G.genre_id = IG.genre_id
-        WHERE IG.game_id = %s
-    """, (game_id,))
+    cur.execute("SELECT genre_name FROM Game_Genres WHERE game_id = %s", (game_id,))
     genres = [row[0] for row in cur.fetchall()]
 
     # Fetch user's rating if logged in
     user_rating = None
     if current_user.is_authenticated:
         cur.execute("""
-            SELECT Stars FROM Rating
+            SELECT Stars FROM Game_Ratings
             WHERE user_id = %s AND game_id = %s
         """, (current_user.id, game_id))
         rating_result = cur.fetchone()
@@ -123,11 +108,10 @@ def game_page(game_id):
 
     # After user_rating section in game_page()
     cur.execute("""
-        SELECT U.username, R.Stars, R.comment
-        FROM Rating R
-        JOIN Users U ON R.user_id = U.user_id
-        WHERE R.game_id = %s
-        ORDER BY R.Stars DESC
+        SELECT username, stars, comment
+        FROM game_ratings_view
+        WHERE game_id = %s
+        ORDER BY stars DESC
     """, (game_id,))
     ratings = [{'username': row[0], 'stars': row[1], 'comment': row[2]} for row in cur.fetchall()]
 
@@ -153,11 +137,10 @@ def event_detail(event_id):
 
     # Get event and venue details
     cur.execute("""
-        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
-               V.name, V.address, V.max_capacity
-        FROM EVENTS E
-        JOIN VENUE V ON E.venue_id = V.venue_id
-        WHERE E.event_id = %s
+        SELECT name, description, event_time, max_participants, nb_participant, 
+            venue_name, venue_address, venue_capacity
+        FROM event_details_view
+        WHERE event_id = %s
     """, (event_id,))
     event = cur.fetchone()
 

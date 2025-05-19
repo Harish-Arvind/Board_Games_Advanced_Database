@@ -21,12 +21,38 @@ JOIN VENUE V ON E.venue_id = V.venue_id
 WHERE E.event_time >= NOW()
 ORDER BY E.event_time;
 
+CREATE OR REPLACE VIEW event_details_view AS
+SELECT 
+    E.event_id,
+    E.name,
+    E.description,
+    E.event_time,
+    E.max_participants,
+    E.nb_participant,
+    V.name AS venue_name,
+    V.address AS venue_address,
+    V.max_capacity AS venue_capacity
+FROM EVENTS E
+JOIN VENUE V ON E.venue_id = V.venue_id;
+
+
 -- Game Details
 CREATE OR REPLACE VIEW Game_Details AS
-SELECT BG.game_id, BG.name, BG.description, BG.year_published,
-       BG.min_players, BG.max_players, BG.min_playtime, BG.max_playtime,
-       BG.min_age, BG.publisher, BG.average_rating
-FROM BOARD_GAMES BG;
+SELECT 
+    game_id,
+    name,
+    image,
+    description,
+    year_published,
+    min_players,
+    max_players,
+    min_playtime,
+    max_playtime,
+    min_age,
+    publisher,
+    average_rating
+FROM BOARD_GAMES;
+
 
 -- Game Genres
 CREATE OR REPLACE VIEW Game_Genres AS
@@ -39,6 +65,16 @@ CREATE OR REPLACE VIEW Game_Ratings AS
 SELECT R.game_id, U.username, R.Stars, R.comment
 FROM Rating R
 JOIN Users U ON R.user_id = U.user_id;
+
+CREATE OR REPLACE VIEW game_ratings_view AS
+SELECT
+    R.game_id,
+    U.username,
+    R.Stars AS stars,
+    R.comment
+FROM Rating R
+JOIN Users U ON R.user_id = U.user_id;
+
 
 -- Searchable Game Data View
 CREATE OR REPLACE VIEW Game_SearchView AS
