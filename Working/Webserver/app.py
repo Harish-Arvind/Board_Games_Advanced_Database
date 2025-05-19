@@ -96,7 +96,7 @@ def game_page(game_id):
         return "Game not found", 404
 
     # Fetch genres
-    cur.execute("SELECT genre_name FROM Game_Genres WHERE game_id = %s", (game_id,))
+    cur.execute("SELECT genre FROM Game_Genres WHERE game_id = %s", (game_id,))
     genres = [row[0] for row in cur.fetchall()]
 
     # Fetch user's rating if logged in
