@@ -63,13 +63,14 @@ JOIN GENRES G ON IG.genre_id = G.genre_id;
 
 -- Ratings with Usernames
 CREATE OR REPLACE VIEW Game_Ratings AS
-SELECT R.game_id, U.username, R.Stars, R.comment
+SELECT R.game_id, R.user_id, U.username, R.Stars, R.comment
 FROM Rating R
 JOIN Users U ON R.user_id = U.user_id;
 
 CREATE OR REPLACE VIEW game_ratings_view AS
 SELECT
     R.game_id,
+    R.user_id, 
     U.username,
     R.Stars AS stars,
     R.comment

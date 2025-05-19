@@ -268,7 +268,7 @@ def add_game():
 @app.route('/search_games')
 def search_games():
     page = request.args.get('page', 1, type=int)
-    per_page = 30
+    per_page = 35
     offset = (page - 1) * per_page
 
     # Collect filter parameters
@@ -752,7 +752,7 @@ def add_event():
         cur.close()
 
         flash('Event added successfully!')
-        return redirect(url_for('events'))
+        return redirect(url_for('Admin/events'))
 
     cur.close()
     return render_template('Admin/add_event.html', venues=venues)
